@@ -111,6 +111,30 @@ def accounttrend(df):
         print(account)
         net.cumsum().plot()
 
+def funds_net_worth():
+    """
+    This function calculates the net worth of each fund over time, plots it
+    and calculates the total
+    """
+    funds = excel.parse('Investments')
+    prices = excel.parse('Funds')
+    dateindex(prices)
+    dateindex(funds)
+    
+    # Prices at point of purchase
+    purchase_prices = funds.pivot(index='Date', columns='Company Code', 
+                                  values='Price (GBP)')
+    # Price Table
+    # TODO - import from somewhere
+    price_table = prices.pivot(index='Date', columns='Fund',values='Price')
+    
+    # Join prices
+    all_prices = pd.concat([price_table, purchase_prices]).sort_index()
+    all_prices.fillna(method='ffill', inplace=True)
+    
+    # Cumulative Amount of Funds
+    fund_table = pd.pivot_table(funds, values=['Quantity'], aggfunc=np.sum, 
+        index=['Date'], columns=['Company Code'], fill_value=0).cumsum()
 
 # Open Excel and parse worksheets
 
@@ -121,3 +145,5 @@ tidyxacts(uk)
 add_date_info(uk)
 tidyxacts(us)
 add_date_info(us)
+
+
