@@ -48,17 +48,19 @@ def tidyxacts(df):
     df['Inflow'] = pd.to_numeric(df['Inflow'])
     df['Outflow'] = pd.to_numeric(df['Outflow'])
     df['Net'] = pd.to_numeric(df['Net'])
-    #df['Master Category'] = df['Master Category'].astype("category")
-    #df['Sub Category'] = df['Sub Category'].astype("category")
-    df['Year'], df['Month'] = df['Date'].dt.year, df['Date'].dt.strftime('%b')
+    # df['Master Category'] = df['Master Category'].astype("category")
+    # df['Sub Category'] = df['Sub Category'].astype("category")
+    # df['Year'], df['Month'] = df['Date'].dt.year, df['Date'].dt.strftime('%b')
+    df['Year'], df['Month'] = df['Date'].dt.year, df['Date'].dt.month
     df['Quarter'], df['Week'] = df['Date'].dt.quarter, df['Date'].dt.week
     df.set_index(['Date'], inplace=True)
+
 
 def add_date_info(df):
     """
     Adds columns for year, month, quarter, week number
     """
-    df['Year'], df['Month'] = df['Date'].dt.year, df['Date'].dt..strftime('%b')
+    df['Year'], df['Month'] = df['Date'].dt.year, df['Date'].dt.strftime('%b')
     df['Quarter'], df['Week'] = df['Date'].dt.quarter, df['Date'].dt.week
 
 
@@ -179,8 +181,11 @@ Plot expenses graph:
 Graph of stacked subcategoryies per master category
 usexpenses.groupby(['Master Category', 'Sub Category'])['Net'].sum().unstack().plot(kind='bar', stacked=True)
 
-summary = pd.pivot_table(us['2017'], index=['Master Category'], columns=['Month'], values=['Net'], aggfunc=np.sum)
+summary = pd.pivot_table(us['2017'], index=['Master Category'], columns=['Month'], values=['Net'], aggfunc=np.sum, fill_value=0)
+months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+summary.columns = months[:now.month] # Renames to months based off current month
+summary.loc['Total']= summary.sum() # adds total row at bottom
 """
 
 
@@ -190,10 +195,24 @@ def monthly_pivot(df):
 
 # Open Excel and parse worksheets
 
-excel = pd.ExcelFile("Money1.2.xlsx")
+excel = pd.ExcelFile("C:\\Users\\aowd\OneDrive - Chevron\\Special Projects\\littlefinger\\Money1.2.xlsx")
 uk = excel.parse('UK')
 us = excel.parse('US')
 tidyxacts(uk)
 tidyxacts(us)
 xact_type(uk)
 xact_type(us)
+
+
+def all_gbp_transactions():
+    # Creating GBP only table
+    forex = excel.parse('Forex')
+    forex.set_index(['Date'], inplace=True) # Set date to be index
+    forex = forex['Exchange Rate'] # Only keep exchange column
+    usex =  us.join(other=forex, how='outer')
+    usex['Exchange Rate'].fillna(method='ffill', inplace=True)
+    usex['Net GBP'] = usex['Net'] / usex['Exchange Rate']
+    usgbp = usex.drop(['Net', 'Exchange Rate'], axis=1)
+    usgbp.rename(columns={'Net GBP':'Net'}, inplace=True)
+    allgbp = pd.concat([uk, usgbp], axis=0)
+    return allgbp
